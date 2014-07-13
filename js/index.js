@@ -72,22 +72,25 @@ var GP = GP || {};
 
             balls = [];
 
+            var initBalls = function()
             {
                 var radiusMin = wallSize * 0.05,
                     radiusMax = wallSize * 0.20,
-                    segW = wallSize * 0.20,
+                    posMax = new THREE.Vector2(wallSize / 2 - radiusMax, wallSize / 2 - radiusMax), 
+                    segW = 30,
                     segH = ~~ (segW * 0.7);
 
                 var r = function (max) {
                         return (~~(Math.random() * max));
                     },
-                    c = [0x0099CC, 0xAA66CC, 0x99CC00, 0xFFBB33, 0xFF4444],
+                    c = [0x0099CC, 0xAA66CC, 0x99CC00, 0xFFBB33, 0xFF4444], // colors
                     cl = c.length,
-                    g,
-                    m,
-                    ball,
-                    radius,
-                    pos, posMax = new THREE.Vector2(wallSize / 2 - radiusMax, wallSize / 2 - radiusMax);
+                    cli = 0, // color cursor
+                    g, // temp geometry
+                    m, // temp material
+                    ball, // temp mesh
+                    radius, // temp radius
+                    pos; // temp pos
 
                 var newPos = function (radius) {
 
@@ -102,47 +105,63 @@ var GP = GP || {};
                     }
                     while (!validatePosition(radius, pos) && tries-- > 0)
 
-                    return pos;
+                    return tries>0 ? pos : null;
                 };
 
                 // avoid too much overlapping balls
                 var validatePosition = function (radius, pos) {
 
-                    var b; // other ball
+                    var other,
+                        d,
+                        a,b; 
 
                     for (var i = 0; i < balls.length; i++) {
-                        b = balls[i];
+                        other = balls[i];
+                        if(other != undefined){
+                            a = Math.pow(other.position.x - pos.x,2);
+                            b = Math.pow(other.position.y - pos.y,2);
+                            d = Math.sqrt( a+b );
 
-                        if (Math.abs(pos.x - b.position.x) > radius) return false;
-
-                        if (Math.abs(pos.y - b.position.y) > radius) return false;
+                            if (d < (other.radius+radius)*0.75) return false;
+                        }
                     }
+
+                    console.log(~~d, other?~~other.radius:null, ~~radius);
 
                     return true;
                 };
 
-                for (var i = 0; i < 10; i++) {
+                for (var i = 0; i < 20; i++) {
+
                     radius = r(radiusMax - radiusMin) + radiusMin;
                     pos = newPos(radius);
 
-                    g = new THREE.SphereGeometry(radius, segW, segH);
-                    m = new THREE.MeshLambertMaterial({
-                        shading: THREE.FlatShading,
-                        color: c[r(cl)]
-                    });
+                    if( pos !== null ){
 
-                    ball = new THREE.Mesh(g, m);
-                    ball.rotateX(0.5 * Math.PI);
-                    ball.position.set(pos.x, pos.y, 0);
-                    console.log(ball.position);
+                        g = new THREE.SphereGeometry(radius, segW, segH);
+                        m = new THREE.MeshLambertMaterial({
+                            // shading: THREE.FlatShading,
+                            color: c[cli++]
+                        });
 
-                    balls.push(ball);
-                    scene.add(ball);
+                        ball = new THREE.Mesh(g, m);
+                        ball.radius = radius;
+                        // ball.rotateX(0.5 * Math.PI);
+                        ball.position.set(pos.x, pos.y, 0);
 
-                    console.log("new: ball(%i, %i, %i) @%i:%i", radius, segW, segH, pos.x, pos.y);
+                        balls.push(ball);
+                        scene.add(ball);
+
+                        var bb = new THREE.BoundingBoxHelper(ball, 0x22ee77);
+                        bb.update();
+                        scene.add( bb );
+
+                        console.log("new: ball(%i, %i, %i) @%i:%i", radius, segW, segH, pos.x, pos.y);
+                    }
                 }
 
-            }
+            }.bind(this);
+            window.setTimeout(initBalls, 200);
 
             // renderer
 
