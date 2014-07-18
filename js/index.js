@@ -164,9 +164,9 @@ var GP = GP || {};
                             ambient: c[cli++],
                             color: c[cli],
                             // shading: THREE.FlatShading,
-                            specular: 0xbbbbbb,
-                            shininess: 120,
-                            specularMap: THREE.ImageUtils.loadTexture("brushedmetal.png")
+                            // specular: 0xbbbbbb,
+                            shininess: 60,
+                            metal: true
                         });
 
                         ball = new THREE.Mesh(g, m);
