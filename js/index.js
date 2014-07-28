@@ -15,14 +15,13 @@ var GP = GP || {};
 
         this.container = container;
 
+        this.wallSize = 100;
+
         var init = function (container) {
 
             var scene, camera, cameraAnchor, renderer;
 
             var lights, wall, balls;
-
-            var wallSize = 100,
-                wallSize2 = wallSize / 2;
 
             // scene
 
@@ -57,13 +56,13 @@ var GP = GP || {};
                 lights.push(l);
                 scene.add(l);
 
-                // l = new THREE.PointLight(0xEEEEEE, 0.8, wallSize * 3);
-                // l.position.set(-wallSize, wallSize, 2);
+                // l = new THREE.PointLight(0xEEEEEE, 0.8, this.wallSize* 3);
+                // l.position.set(-this.wallSize this.wallSize 2);
                 // lights.push(l);
                 // scene.add(l);
 
-                l = new THREE.PointLight(0xEEEEEE, 0.8, wallSize * 3);
-                l.position.set(wallSize, wallSize, 0);
+                l = new THREE.PointLight(0xEEEEEE, 0.8, this.wallSize * 3);
+                l.position.set(this.wallSize, this.wallSize, 0);
                 lights.push(l);
                 scene.add(l);
 
@@ -78,7 +77,7 @@ var GP = GP || {};
             // wall
 
             {
-                var g = new THREE.PlaneGeometry(wallSize, wallSize);
+                var g = new THREE.PlaneGeometry(this.wallSize, this.wallSize);
 
                 var m = new THREE.MeshPhongMaterial({
                     color: 0xffffff
@@ -93,102 +92,7 @@ var GP = GP || {};
 
             balls = [];
 
-            var initBalls = function () {
-                var radiusMin = wallSize * 0.05,
-                    radiusMax = wallSize * 0.20,
-                    posMax,
-                    segW = 30,
-                    segH = ~~ (segW * 0.7);
-
-                var r = function (max) {
-                        return (~~(Math.random() * max));
-                    },
-                    c = [0x0099CC, 0xAA66CC, 0x99CC00, 0xFFBB33, 0xFF4444], // colors
-                    cl = c.length - 1,
-                    cli = 0, // color cursor
-                    g, // temp geometry
-                    m, // temp material
-                    ball, // temp mesh
-                    radius, // temp radius
-                    pos; // temp pos
-
-                var newPos = function (radius) {
-
-                    var pos = new THREE.Vector2(),
-                        tries = 5;
-
-                    do {
-                        pos = new THREE.Vector2(
-                            r(posMax.x) - posMax.x / 2,
-                            r(posMax.y) - posMax.y / 2
-                        );
-                    }
-                    while (!validatePosition(radius, pos) && tries-- > 0)
-
-                    return tries > 0 ? pos : null;
-                };
-
-                // avoid too many overlapping balls
-                var validatePosition = function (radius, pos) {
-
-                    var other,
-                        d,
-                        a, b;
-
-                    for (var i = 0; i < balls.length; i++) {
-                        other = balls[i];
-                        if (other != undefined) {
-                            a = Math.pow(other.position.x - pos.x, 2);
-                            b = Math.pow(other.position.y - pos.y, 2);
-                            d = Math.sqrt(a + b);
-
-                            if (d < (other.radius + radius) * 0.75) return false;
-                        }
-                    }
-
-                    //                     console.log(~~d, other?~~other.radius:null, ~~radius);
-
-                    return true;
-                };
-
-                for (var i = 0; i < 30; i++) {
-
-                    radius = r(radiusMax - radiusMin) + radiusMin;
-                    posMax = new THREE.Vector2(wallSize2, wallSize2);
-                    pos = newPos(radius);
-
-                    if (pos !== null) {
-
-                        g = new THREE.SphereGeometry(radius, segW, segH, 0, Math.PI);
-
-                        var color = c[++cli%(cl+1)];
-
-                        m = new THREE.MeshPhongMaterial({
-                            ambient: color,
-                            color: color,
-                            // shading: THREE.FlatShading,
-                            // specular: 0xbbbbbb,
-                            shininess: 60,
-                            metal: true
-                        });
-
-                        ball = new THREE.Mesh(g, m);
-                        ball.radius = radius;
-                        // ball.rotateX(0.5 * Math.PI);
-                        ball.position.set(pos.x, pos.y, 0);
-                        ball.name = "ball" + i;
-
-                        balls.push(ball);
-                        scene.add(ball);
-
-                        //                         console.log("new: ball(%i, %i, %i) @%i:%i", radius, segW, segH, pos.x, pos.y);
-                    }
-                }
-
-                console.log(balls.length + " balls created.");
-
-            }.bind(this);
-            window.setTimeout(initBalls, 1);
+            window.setTimeout(this.initBalls.bind(this), 1);
 
             // renderer
 
@@ -219,11 +123,120 @@ var GP = GP || {};
 
             container.appendChild(this.canvas = renderer.domElement);
 
-            onCanvasResize.call(this, this.canvas.clientWidth, this.canvas.clientHeight);
+            this.onCanvasResize(this.canvas.clientWidth, this.canvas.clientHeight);
 
         };
 
-        var onCanvasResize = function (w, h) {
+
+        this.initBalls = function () {
+
+            var wallSize2 = this.wallSize / 2,
+                radiusMin = this.wallSize * 0.05,
+                radiusMax = this.wallSize * 0.20,
+                posMax,
+                segW = 30,
+                segH = ~~ (segW * 0.7);
+
+            var r = function (max) {
+                    return (~~(Math.random() * max));
+                },
+                c = [0x0099CC, 0xAA66CC, 0x99CC00, 0xFFBB33, 0xFF4444], // colors
+                cl = c.length - 1,
+                cli = 0, // color cursor
+                g, // temp geometry
+                m, // temp material
+                ball, // temp mesh
+                radius, // temp radius
+                pos; // temp pos
+
+            var newPos = function (radius) {
+
+                var pos = new THREE.Vector2(),
+                    tries = 5;
+
+                do {
+                    pos = new THREE.Vector2(
+                        r(posMax.x) - posMax.x / 2,
+                        r(posMax.y) - posMax.y / 2
+                    );
+                }
+                while (!validatePosition(radius, pos) && tries-- > 0)
+
+                return tries > 0 ? pos : null;
+            }.bind(this);
+
+            // avoid too many overlapping balls
+            var validatePosition = function (radius, pos) {
+
+                var other,
+                    d,
+                    a, b;
+
+                for (var i = 0; i < this.balls.length; i++) {
+                    other = this.balls[i];
+                    if (other != undefined) {
+                        a = Math.pow(other.position.x - pos.x, 2);
+                        b = Math.pow(other.position.y - pos.y, 2);
+                        d = Math.sqrt(a + b);
+
+                        if (d < (other.radius + radius) * 0.75) return false;
+                    }
+                }
+
+                //                     console.log(~~d, other?~~other.radius:null, ~~radius);
+
+                return true;
+            }.bind(this);
+
+            for (var i = 0; i < 30; i++) {
+
+                radius = r(radiusMax - radiusMin) + radiusMin;
+                posMax = new THREE.Vector2(wallSize2, wallSize2);
+                pos = newPos(radius);
+
+                if (pos !== null) {
+
+                    g = new THREE.SphereGeometry(radius, segW, segH, 0, Math.PI);
+
+                    var color = c[++cli % (cl + 1)];
+
+                    m = new THREE.MeshPhongMaterial({
+                        ambient: color,
+                        color: color,
+                        // shading: THREE.FlatShading,
+                        // specular: 0xbbbbbb,
+                        shininess: 60,
+                        metal: true
+                    });
+
+                    ball = new THREE.Mesh(g, m);
+                    ball.radius = radius;
+                    // ball.rotateX(0.5 * Math.PI);
+                    ball.position.set(pos.x, pos.y, 0);
+                    ball.name = "ball" + i;
+
+                    this.balls.push(ball);
+                    this.scene.add(ball);
+
+                    //                         console.log("new: ball(%i, %i, %i) @%i:%i", radius, segW, segH, pos.x, pos.y);
+                }
+            }
+
+            console.log(this.balls.length + " balls created.");
+
+            this.initEvents();
+
+        };
+
+        this.initEvents = function () {
+
+            // todo
+
+            // http://mwbrooks.github.io/thumbs.js/
+
+        };
+
+        this.onCanvasResize = function (w, h) {
 
             this.canvas.width = w;
             this.canvas.height = h;
@@ -232,7 +245,7 @@ var GP = GP || {};
             this.camera.updateProjectionMatrix();
 
             this.renderer.setSize(w, h);
-        };
+        }.bind(this);
 
         this.startDate = Date.now();
 
@@ -251,7 +264,7 @@ var GP = GP || {};
                 h = this.canvas.clientHeight;
 
             if (this.canvas.width != w || this.canvas.height != h) {
-                onCanvasResize.call(this, w, h);
+                this.onCanvasResize(w, h);
             }
 
             this.renderer.render(this.scene, this.camera);
