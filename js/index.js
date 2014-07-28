@@ -104,7 +104,7 @@ var GP = GP || {};
                         return (~~(Math.random() * max));
                     },
                     c = [0x0099CC, 0xAA66CC, 0x99CC00, 0xFFBB33, 0xFF4444], // colors
-                    cl = c.length,
+                    cl = c.length - 1,
                     cli = 0, // color cursor
                     g, // temp geometry
                     m, // temp material
@@ -128,7 +128,7 @@ var GP = GP || {};
                     return tries > 0 ? pos : null;
                 };
 
-                // avoid too much overlapping balls
+                // avoid too many overlapping balls
                 var validatePosition = function (radius, pos) {
 
                     var other,
@@ -154,15 +154,18 @@ var GP = GP || {};
                 for (var i = 0; i < 30; i++) {
 
                     radius = r(radiusMax - radiusMin) + radiusMin;
-                    posMax = new THREE.Vector2(wallSize2 - radius, wallSize2 - radius);
+                    posMax = new THREE.Vector2(wallSize2, wallSize2);
                     pos = newPos(radius);
 
                     if (pos !== null) {
 
                         g = new THREE.SphereGeometry(radius, segW, segH, 0, Math.PI);
+
+                        var color = c[++cli%(cl+1)];
+
                         m = new THREE.MeshPhongMaterial({
-                            ambient: c[cli++],
-                            color: c[cli],
+                            ambient: color,
+                            color: color,
                             // shading: THREE.FlatShading,
                             // specular: 0xbbbbbb,
                             shininess: 60,
