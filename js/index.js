@@ -32,6 +32,7 @@ var GP = GP || {};
             // camera
 
             camera = new THREE.PerspectiveCamera(45, container.innerWidth / container.innerHeight, 1, 500);
+            // camera = new THREE.OrthographicCamera(-container.innerWidth / 2, container.innerWidth / 2, -container.innerHeight / 2, container.innerHeight / 2, 1, 500);
             camera.position.set(0, 0, 100);
 
             cameraAnchor = new THREE.Object3D();
@@ -77,14 +78,14 @@ var GP = GP || {};
             // wall
 
             {
-                var g = new THREE.PlaneGeometry(this.wallSize, this.wallSize);
+                // var g = new THREE.PlaneGeometry(this.wallSize, this.wallSize);
 
-                var m = new THREE.MeshPhongMaterial({
-                    color: 0xffffff
-                });
+                // var m = new THREE.MeshPhongMaterial({
+                //     color: 0xffffff
+                // });
 
-                wall = new THREE.Mesh(g, m);
-                scene.add(wall);
+                // wall = new THREE.Mesh(g, m);
+                // scene.add(wall);
             }
 
 
@@ -163,6 +164,7 @@ var GP = GP || {};
                 while (!validatePosition(radius, pos) && tries-- > 0)
 
                 return tries > 0 ? pos : null;
+
             }.bind(this);
 
             // avoid too many overlapping balls
@@ -186,6 +188,7 @@ var GP = GP || {};
                 //                     console.log(~~d, other?~~other.radius:null, ~~radius);
 
                 return true;
+
             }.bind(this);
 
             for (var i = 0; i < 30; i++) {
@@ -230,9 +233,41 @@ var GP = GP || {};
 
         this.initEvents = function () {
 
-            // todo
+            this.picker = {
+                camera: this.camera,
+
+                width: this.container.clientWidth,
+                height: this.container.clientHeight,
+                widthHalf: this.container.clientWidth / 2,
+                heightHalf: this.container.clientHeight / 2,
+
+                targets: this.balls,
+
+                projector: new THREE.Projector(),
+                vector: new THREE.Vector3(),
+
+                pickAt: function (x, y) {
+
+                    this.vector.set((x / this.width) * 2 - 1, -(y / this.height) * 2 + 1, 0);
+                    this.projector.unprojectVector(this.vector, this.camera);
+
+                    var ray = new THREE.Raycaster(this.camera.position, this.vector.sub(this.camera.position).normalize());
+                    var intersects = ray.intersectObjects(this.targets);
+
+                    if (intersects.length > 0) {
+
+                    }
+                },
+            };
 
             // http://mwbrooks.github.io/thumbs.js/
+            this.container.addEventListener('touchclick', this.onClick.bind(this), false);
+
+        };
+
+        this.onClick = function (e) {
+
+            this.picker.pickAt(e.clientX, e.clientY);
 
         };
 
