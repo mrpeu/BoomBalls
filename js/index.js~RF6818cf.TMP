@@ -15,7 +15,7 @@ var GP = GP || {};
 
         this.container = container;
 
-        this.wallSize = new THREE.Vector2(container.clientWidth, container.clientHeight);
+        this.wallSize = new THREE.Vector2(container.innerWidth, container.innerHeight);
 
         var init = function (container) {
 
@@ -31,12 +31,9 @@ var GP = GP || {};
 
             // camera
 
-            // camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 500);
-            // camera.position.set(0, 0, 100);
-            // camera.name = "p";
-
-            camera = new THREE.OrthographicCamera(-container.clientWidth / 2, container.clientWidth / 2, container.clientHeight / 2, -container.clientHeight / 2, -100, 100);
-            camera.name = "o";
+            camera = new THREE.PerspectiveCamera(45, container.innerWidth / container.innerHeight, 1, 500);
+            // camera = new THREE.OrthographicCamera(-container.innerWidth / 2, container.innerWidth / 2, -container.innerHeight / 2, container.innerHeight / 2, 1, 500);
+            camera.position.set(0, 0, 100);
 
             cameraAnchor = new THREE.Object3D();
             cameraAnchor.add(camera);
@@ -127,7 +124,7 @@ var GP = GP || {};
             var wallSizeHalf = new THREE.Vector2(this.wallSize.x / 2, this.wallSize.y / 2),
                 radiusMin = Math.min(this.wallSize.x, this.wallSize.y) * 0.05,
                 radiusMax = Math.min(this.wallSize.x, this.wallSize.y) * 0.20,
-                posMax = wallSizeHalf,
+                posMax = this.wallSize,
                 segW = 30,
                 segH = ~~ (segW * 0.7);
 
@@ -166,11 +163,11 @@ var GP = GP || {};
                         }
                     }
 
-                    //                     console.log(~~d, other ? ~~other.radius : null, ~~radius);
+                    //                     console.log(~~d, other?~~other.radius:null, ~~radius);
 
                     return true;
 
-                }.bind(this);
+}.bind(this);
 
                 do {
                     pos = new THREE.Vector2(
@@ -208,8 +205,7 @@ var GP = GP || {};
                     ball.radius = radius;
                     // ball.rotateX(0.5 * Math.PI);
                     ball.position.set(pos.x, pos.y, 0);
-
-                    ball.name = "ball" + i + "#" + m.color.getHexString() + "@" + JSON.stringify(ball.position);
+                    ball.name = "ball" + i;
 
                     this.balls.push(ball);
                     this.scene.add(ball);
@@ -242,33 +238,19 @@ var GP = GP || {};
                 pickAt: function (x, y) {
 
                     this.vector.set((x / this.width) * 2 - 1, -(y / this.height) * 2 + 1, 0);
+                    this.projector.unprojectVector(this.vector, this.camera);
 
-                    var ray;
-
-                    if (this.camera.name == "o") {
-
-                        ray = this.projector.pickingRay(this.vector, this.camera);
-
-                    } else {
-
-                        this.projector.unprojectVector(this.vector, this.camera);
-
-                        ray = new THREE.Raycaster(this.camera.position, this.vector.sub(this.camera.position).normalize());
-
-                    }
-
+                    var ray = new THREE.Raycaster(this.camera.position, this.vector.sub(this.camera.position).normalize());
                     var intersects = ray.intersectObjects(this.targets);
 
                     if (intersects.length > 0) {
-
-                        console.log("Touched ", intersects[0].object.name);
 
                     }
                 },
             };
 
             // http://mwbrooks.github.io/thumbs.js/
-            this.container.addEventListener('touchstart', this.onClick.bind(this), false);
+            this.container.addEventListener('touchclick', this.onClick.bind(this), false);
 
         };
 
@@ -283,18 +265,7 @@ var GP = GP || {};
             this.canvas.width = w;
             this.canvas.height = h;
 
-            if (this.camera.name == "o") {
-
-                this.camera.left = -container.clientWidth / 2;
-                this.camera.right = container.clientWidth / 2;
-                this.camera.top = container.clientHeight / 2;
-                this.camera.bottom = -container.clientHeight / 2;
-
-            } else {
-
-                this.camera.aspect = w / h;
-            }
-
+            this.camera.aspect = w / h;
             this.camera.updateProjectionMatrix();
 
             this.renderer.setSize(w, h);
