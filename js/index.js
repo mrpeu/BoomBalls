@@ -23,7 +23,7 @@ var GP = GP || {};
 
             var scene, camera, cameraAnchor, renderer;
 
-            var lights, wall, balls;
+            var lights, balls;
 
             // scene
 
@@ -37,7 +37,7 @@ var GP = GP || {};
             // camera.position.set(0, 0, 100);
             // camera.name = "p";
 
-            camera = new THREE.OrthographicCamera(-container.clientWidth / 2, container.clientWidth / 2, container.clientHeight / 2, -container.clientHeight / 2, -100, 100);
+            camera = new THREE.OrthographicCamera(-container.clientWidth / 2, container.clientWidth / 2, container.clientHeight / 2, -container.clientHeight / 2, -200, 0);
             camera.name = "o";
 
             cameraAnchor = new THREE.Object3D();
@@ -70,77 +70,44 @@ var GP = GP || {};
             }
 
 
-            // wall
+            // Wall
             {
-                wall = {
+                var Wall = function (uni) {
 
-                    size: this.wallSize,
-                    scene: this.scene,
-                    booms: this.booms,
+                    this.uni = uni;
+                };
+
+                Wall.prototype = {
+
+                    uni: null,
 
                     canvas: null,
                     context: null,
                     mesh: null,
 
-                    update: function (time) {
+                    reset: function () {
+
+                        var w = this.uni.wallSize.x,
+                            h = this.uni.wallSize.y;
 
                         if (this.canvas === null) {
                             this.canvas = document.createElement('canvas');
+                            this.context = this.canvas.getContext('2d');
                         }
 
-                        // http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-                        var w = this.size.x;
-                        w--;
-                        w |= w >> 1;
-                        w |= w >> 2;
-                        w |= w >> 4;
-                        w |= w >> 8;
-                        w |= w >> 16;
-                        w++;
+                        this.canvas.width = this.uni.wallSize.x = w;
+                        this.canvas.height = this.uni.wallSize.y = h;
 
-                        var h = w / (this.size.x / this.size.y);
-                        h--;
-                        h |= h >> 1;
-                        h |= h >> 2;
-                        h |= h >> 4;
-                        h |= h >> 8;
-                        h |= h >> 16;
-                        h++;
 
-                        this.canvas.width = w;
-                        this.canvas.height = h;
+                        if (this.uni.scene) {
 
-                        var ctx = this.context;
+                            if (this.mesh) {
 
-                        if (ctx === null) {
-                            ctx = this.canvas.getContext('2d');
-                        }
-
-                        ctx.globalAlpha = 0.4;
-                        ctx.fillStyle = "#ffffff";
-
-                        ctx.beginPath();
-                        var b, bToDelete = [];
-                        for (var i = 0; i < this.booms.length; i++) {
-
-                            b = this.booms[i];
-                            b.update(time);
-                            if (b.isDead) {
-                                bToDelete.push(i);
-                            } else {
-                                ctx.arc(15 + 25 * i, 15, b.radius, 0, 2 * Math.PI);
+                                this.uni.scene.remove(this.mesh);
+                                this.mesh = null;
                             }
-                        }
-                        ctx.fill();
 
-                        // clean booms
-                        for (var i = 0; i < bToDelete.length; i++) {
-                            this.deleteBoom(i);
-                        }
-
-                        if (this.mesh === null) {
-
-                            var g = new THREE.PlaneGeometry(this.size.x, this.size.y);
+                            var g = new THREE.PlaneGeometry(w, h);
 
                             var m = new THREE.MeshBasicMaterial({
                                 map: new THREE.Texture(this.canvas),
@@ -149,30 +116,49 @@ var GP = GP || {};
 
                             this.mesh = new THREE.Mesh(g, m);
 
-                            scene.add(this.mesh);
-
+                            this.uni.scene.add(this.mesh);
                         }
 
-                        this.mesh.material.map.needsUpdate = true;
                     },
 
-                    deleteBoom: function (i) {
+                    update: function (time) {
 
-                        if (this.booms.length < 1) {
+                        var ctx = this.context;
 
-                            this.booms = [];
+                        ctx.clearRect(0, 0, this.uni.wallSize.x, this.uni.wallSize.y);
 
-                        } else {
+                        // ctx.globalAlpha = 0.75;
+                        // ctx.strokeStyle = "red";
+                        // ctx.strokeRect(0, 0, this.uni.wallSize.x, this.uni.wallSize.y);
 
-                            this.booms.splice(i, 1);
+
+                        // draw Boom's orbs
+                        {
+                            for (var i = 0, b; i < this.uni.booms.length; i++) {
+
+                                b = this.uni.booms[i];
+                                b.update(time);
+
+                                if (!b.isDead) {
+
+                                    ctx.globalAlpha = b.opacity;
+                                    ctx.fillStyle = b.color;
+                                    ctx.beginPath();
+                                    ctx.arc(b.ball.position.x + this.uni.wallSize.x / 2, -b.ball.position.y + this.uni.wallSize.y / 2, b.radius, 0, 2 * Math.PI);
+                                    ctx.fill();
+                                }
+                            }
 
                         }
+
+                        if (this.mesh === null) this.reset();
+
+                        this.mesh.material.map.needsUpdate = true;
                     }
 
                 };
 
-                wall.update();
-
+                this.wall = new Wall(this);
             }
 
             // balls
@@ -204,7 +190,6 @@ var GP = GP || {};
             this.camera = camera;
             this.cameraAnchor = cameraAnchor;
             this.lights = lights;
-            this.wall = wall;
             this.balls = balls;
             this.renderer = renderer;
 
@@ -318,50 +303,9 @@ var GP = GP || {};
 
         };
 
+        this.picker = new GP.Picker(this);
+
         this.initEvents = function () {
-
-            this.picker = {
-                camera: this.camera,
-                wall: this.wall,
-                boom: this.boom.bind(this),
-
-                width: this.container.clientWidth,
-                height: this.container.clientHeight,
-                widthHalf: this.container.clientWidth / 2,
-                heightHalf: this.container.clientHeight / 2,
-
-                targets: this.balls,
-
-                projector: new THREE.Projector(),
-                vector: new THREE.Vector3(),
-
-                pickAt: function (x, y) {
-
-                    this.vector.set((x / this.width) * 2 - 1, -(y / this.height) * 2 + 1, 0);
-
-                    var ray;
-
-                    if (this.camera.name == "o") {
-
-                        ray = this.projector.pickingRay(this.vector, this.camera);
-
-                    } else {
-
-                        this.projector.unprojectVector(this.vector, this.camera);
-
-                        ray = new THREE.Raycaster(this.camera.position, this.vector.sub(this.camera.position).normalize());
-
-                    }
-
-                    var intersects = ray.intersectObjects(this.targets);
-
-                    if (intersects.length > 0) {
-
-                        this.boom(intersects[0].object);
-
-                    }
-                },
-            };
 
             // http://mwbrooks.github.io/thumbs.js/
             this.container.addEventListener('touchstart', this.onClick.bind(this), false);
@@ -376,8 +320,8 @@ var GP = GP || {};
 
         this.onCanvasResize = function (w, h) {
 
-            this.canvas.width = w;
-            this.canvas.height = h;
+            this.canvas.width = this.wallSize.x = w;
+            this.canvas.height = this.wallSize.y = h;
 
             if (this.camera.name == "o") {
 
@@ -389,12 +333,19 @@ var GP = GP || {};
             } else {
 
                 this.camera.aspect = w / h;
+
             }
 
             this.camera.updateProjectionMatrix();
 
             this.renderer.setSize(w, h);
+
+            this.wall.reset();
+
+            this.picker.reset();
+
         }.bind(this);
+
 
         this.boom = function (ball) {
 
@@ -402,19 +353,37 @@ var GP = GP || {};
 
             this.booms.push(new GP.Boom(ball));
 
-            this.wall.update();
+        };
+
+        this.updateBooms = function (time) {
+
+            for (var i = 0, b; i < this.booms.length; i++) {
+
+                b = this.booms[i];
+
+                if (b.isDead) {
+
+                    this.booms.splice(i, 1);
+                    i--;
+
+                } else {
+
+                    b.update(time);
+
+                }
+            }
 
         };
 
 
-
-        this.startDate = Date.now();
-
         this.animate = function (time, delta) {
 
             if (this.booms.length > 0) {
-                this.wall.update(time);
+
+                this.updateBooms(time);
+
             }
+            this.wall.update(time);
 
         };
 
@@ -423,7 +392,7 @@ var GP = GP || {};
 
         this.render = (function () {
 
-            var time = Date.now() - this.startDate,
+            var time = Date.now(),
                 w = this.canvas.clientWidth,
                 h = this.canvas.clientHeight;
 
@@ -448,7 +417,6 @@ var GP = GP || {};
     };
 
     GP.Universe.prototype = {
-
         constructor: GP.Universe,
 
         config: {},
@@ -467,9 +435,76 @@ var GP = GP || {};
         wall: null,
         booms: null,
 
-        startDate: null,
         render: null
     };
+
+
+
+
+    GP.Picker = function (uni) {
+
+        this.uni = uni;
+        this.reset();
+
+    }
+
+    GP.Picker.prototype = {
+        constructor: GP.Picker,
+
+        uni: null,
+        targets: null,
+
+        width: null,
+        height: null,
+        widthHalf: null,
+        heightHalf: null,
+
+        projector: null,
+        vector: null,
+
+        reset: function () {
+
+            this.width = this.uni.container.clientWidth;
+            this.height = this.uni.container.clientHeight;
+            this.widthHalf = this.uni.container.clientWidth / 2;
+            this.heightHalf = this.uni.container.clientHeight / 2;
+
+            this.projector = new THREE.Projector();
+            this.vector = new THREE.Vector3();
+
+            this.targets = this.uni.balls;
+
+        },
+
+        pickAt: function (x, y) {
+
+            this.vector.set((x / this.width) * 2 - 1, -(y / this.height) * 2 + 1, 0);
+
+            var ray;
+
+            if (this.uni.camera.name == "o") {
+
+                ray = this.projector.pickingRay(this.vector, this.uni.camera);
+
+            } else {
+
+                this.projector.unprojectVector(this.vector, this.uni.camera);
+
+                ray = new THREE.Raycaster(this.uni.camera.position, this.vector.sub(this.uni.camera.position).normalize());
+
+            }
+
+            var intersects = ray.intersectObjects(this.targets);
+
+            if (intersects.length > 0) {
+
+                this.uni.boom(intersects[0].object);
+
+            }
+        },
+    };
+
+
 
 
     GP.Boom = function (ball) {
@@ -477,31 +512,44 @@ var GP = GP || {};
         if (!ball) throw new Error("A Boom needs a ball!");
 
         this.ball = ball;
-        this.startDate = Date.now();
-        this.endDate = Date.now() + 1000 * 4;
+        this.startTime = Date.now();
+        this.lengthTime = 1000 * 2;
+        this.endTime = this.startTime + this.lengthTime;
 
         this.radius = ball.geometry.radius;
+        this.radiusEnd = ball.geometry.radius * (Math.exp(3) / 2);
+
+        this.color = '#' + ball.material.color.getHexString();
         this.opacity = 1;
     };
 
     GP.Boom.prototype = {
+        constructor: GP.Boom,
 
         ball: null, // mesh object source
-        startDate: null, // date source
-        endDate: null, // date death
+        startTime: null, // date source
+        lengthTime: null,
+        endTime: null, // date death
 
         radius: null, // current radius of the orb
+        radiusEnd: null,
+
+        color: null,
         opacity: null,
 
         isDead: false,
 
-        constructor: GP.Boom,
-
         update: function update(time) {
 
-            this.radius++;
+            var x = 3 - (time - this.startTime) / (this.lengthTime) * 3;
+            var animFactor = (Math.exp(x) / 2);
 
-            if (Date.now() > this.endDate) {
+            this.radius = this.radiusEnd - this.ball.geometry.radius * animFactor;
+            if (this.radius < 0) this.radius = 0;
+
+            this.opacity = 0.05 * animFactor;
+
+            if (Date.now() > this.endTime) {
                 this.isDead = true;
             }
         }
