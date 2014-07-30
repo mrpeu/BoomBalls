@@ -92,6 +92,7 @@ var GP = GP || {};
 
                         if (this.canvas === null) {
                             this.canvas = document.createElement('canvas');
+
                             this.context = this.canvas.getContext('2d');
                         }
 
@@ -131,9 +132,28 @@ var GP = GP || {};
                         // ctx.strokeStyle = "red";
                         // ctx.strokeRect(0, 0, this.uni.wallSize.x, this.uni.wallSize.y);
 
+                        // draw Ball's shadow/antialias
+                        {
+                            ctx.globalAlpha = 1;
+                            ctx.shadowBlur = 2;
+
+                            for (var i = 0, b; i < this.uni.balls.length; i++) {
+                                b = this.uni.balls[i];
+
+                                ctx.beginPath();
+                                ctx.shadowColor = ctx.fillStyle = '#' + (b.material.ambient || b.material.color).getHexString();
+                                ctx.arc(b.position.x + this.uni.wallSize.x / 2, -b.position.y + this.uni.wallSize.y / 2, b.geometry.radius, 0, 2 * Math.PI);
+
+                                ctx.fill();
+                            }
+
+                        }
+
 
                         // draw Boom's orbs
                         {
+                            ctx.shadowBlur = 50;
+
                             for (var i = 0, b; i < this.uni.booms.length; i++) {
 
                                 b = this.uni.booms[i];
@@ -142,7 +162,7 @@ var GP = GP || {};
                                 if (!b.isDead) {
 
                                     ctx.globalAlpha = b.opacity;
-                                    ctx.fillStyle = b.color;
+                                    ctx.shadowColor = ctx.fillStyle = b.color;
                                     ctx.beginPath();
                                     ctx.arc(b.ball.position.x + this.uni.wallSize.x / 2, -b.ball.position.y + this.uni.wallSize.y / 2, b.radius, 0, 2 * Math.PI);
                                     ctx.fill();
@@ -212,7 +232,8 @@ var GP = GP || {};
             var r = function (max) {
                     return (~~(Math.random() * max));
                 },
-                c = [0x0099CC, 0xAA66CC, 0x99CC00, 0xFFBB33, 0xFF4444], // colors
+                c = [0xDA4453, 0xE9573F, 0xFCBB42, 0x8CC152, 0x37BC9B, 0x3BAFDA, 0x4A89DC, 0x967ADC, 0xD770AD, 0xE6E9ED, 0xAAB2BD, 0x434A54], // colors
+                c2 = [0xED5565, 0xFC6E51, 0xFFCE54, 0xA0D468, 0x48CFAD, 0x4FC1E9, 0x5D9CEC, 0xAC92EC, 0xEC87C0, 0xF5F7FA, 0xCCD1D9, 0x656D78], // colors
                 cl = c.length - 1,
                 cli = 0, // color cursor
                 g, // temp geometry
@@ -272,11 +293,11 @@ var GP = GP || {};
                     g = new THREE.SphereGeometry(radius, segW, segH, 0, Math.PI);
                     g.radius = radius;
 
-                    var color = c[++cli % (cl + 1)];
+                    var cIndex = ++cli % (cl + 1);
 
                     m = new THREE.MeshPhongMaterial({
-                        ambient: color,
-                        color: color,
+                        ambient: new THREE.Color(c2[cIndex]),
+                        color: new THREE.Color(c[cIndex]),
                         // shading: THREE.FlatShading,
                         // specular: 0xbbbbbb,
                         shininess: 60,
@@ -519,7 +540,7 @@ var GP = GP || {};
         this.radius = ball.geometry.radius;
         this.radiusEnd = ball.geometry.radius * (Math.exp(3) / 2);
 
-        this.color = '#' + ball.material.color.getHexString();
+        this.color = '#' + (ball.material.ambient || ball.material.color).getHexString();
         this.opacity = 1;
     };
 
@@ -542,12 +563,13 @@ var GP = GP || {};
         update: function update(time) {
 
             var x = 3 - (time - this.startTime) / (this.lengthTime) * 3;
-            var animFactor = (Math.exp(x) / 2);
+            if (x < 0) x = 0;
+
+            var animFactor = (Math.exp(x) / 2) - 0.5;
 
             this.radius = this.radiusEnd - this.ball.geometry.radius * animFactor;
-            if (this.radius < 0) this.radius = 0;
 
-            this.opacity = 0.05 * animFactor;
+            this.opacity = 0.5 * (animFactor / 9.5);
 
             if (Date.now() > this.endTime) {
                 this.isDead = true;
