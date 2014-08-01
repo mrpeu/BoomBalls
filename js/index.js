@@ -19,21 +19,48 @@ var GP = GP || {};
 
         this.booms = [];
 
-        var init = function (container) {
+
+        this.init(container);
+
+        return this;
+    };
+
+    GP.Universe.prototype = {
+        constructor: GP.Universe,
+
+        config: {},
+
+        container: null,
+        canvas: null,
+
+        camera: null,
+        cameraAnchor: null,
+
+        scene: null,
+        renderer: null,
+
+        floor: null,
+        lights: null,
+        wall: null,
+        booms: null,
+
+        init: function (container) {
 
             // scene
 
             this.scene = new THREE.Scene();
             //this.scene.fog = new THREE.Fog(0xeeeeee, 1000, 3000);
 
+            var w = container.clientWidth,
+                h = container.clientHeight;
 
             // camera
 
-            // this.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 1, 500);
+            // this.camera = new THREE.PerspectiveCamera(45, w / h, 1, 500);
             // this.camera.position.set(0, 0, 100);
             // this.camera.name = "p";
 
-            this.camera = new THREE.OrthographicCamera(-container.clientWidth / 2, container.clientWidth / 2, container.clientHeight / 2, -container.clientHeight / 2, -200, 50);
+            this.camera = new THREE.OrthographicCamera(-w / 2, w / 2, h / 2, -h / 2, -200, 50);
             this.camera.name = "o";
 
             this.cameraAnchor = new THREE.Object3D();
@@ -41,6 +68,8 @@ var GP = GP || {};
 
             this.scene.add(this.cameraAnchor);
 
+
+            this.picker = new GP.Picker(w, h, this.camera);
 
             // lights
 
@@ -68,23 +97,24 @@ var GP = GP || {};
 
             // Wall
             {
-                var Wall = function (uni) {
+                var Wall = function (size) {
 
-                    this.uni = uni;
+                    this.size = size;
+
                 };
 
                 Wall.prototype = {
 
-                    uni: null,
+                    size: null,
 
                     canvas: null,
                     context: null,
                     mesh: null,
 
-                    reset: function () {
+                    reset: function (w, h, scene) {
 
-                        var w = this.uni.wallSize.x,
-                            h = this.uni.wallSize.y;
+                        this.size.x = w;
+                        this.size.y = h;
 
                         if (this.canvas === null) {
                             this.canvas = document.createElement('canvas');
@@ -92,15 +122,15 @@ var GP = GP || {};
                             this.context = this.canvas.getContext('2d');
                         }
 
-                        this.canvas.width = this.uni.wallSize.x = w;
-                        this.canvas.height = this.uni.wallSize.y = h;
+                        this.canvas.width = this.size.x = w;
+                        this.canvas.height = this.size.y = h;
 
 
-                        if (this.uni.scene) {
+                        if (scene) {
 
                             if (this.mesh) {
 
-                                this.uni.scene.remove(this.mesh);
+                                scene.remove(this.mesh);
                                 this.mesh = null;
                             }
 
@@ -113,32 +143,37 @@ var GP = GP || {};
 
                             this.mesh = new THREE.Mesh(g, m);
 
-                            this.uni.scene.add(this.mesh);
+                            scene.add(this.mesh);
                         }
 
                     },
 
-                    update: function (time) {
+                    update: function (time, balls, booms) {
+
+                        if (this.mesh === null) {
+                            console.warn("[GP.Wall] this.mesh==null: reset() must be run before update");
+                            return;
+                        }
 
                         var ctx = this.context;
 
-                        ctx.clearRect(0, 0, this.uni.wallSize.x, this.uni.wallSize.y);
+                        ctx.clearRect(0, 0, this.size.x, this.size.y);
 
                         // ctx.globalAlpha = 0.75;
                         // ctx.strokeStyle = "red";
-                        // ctx.strokeRect(0, 0, this.uni.wallSize.x, this.uni.wallSize.y);
+                        // ctx.strokeRect(0, 0, this.size.x, this.size.y);
 
                         // draw Ball's glow
                         {
                             ctx.globalAlpha = 0.2;
                             ctx.shadowBlur = 5;
 
-                            for (var i = 0, b; i < this.uni.balls.length; i++) {
-                                b = this.uni.balls[i];
+                            for (var i = 0, b; i < balls.length; i++) {
+                                b = balls[i];
 
                                 ctx.beginPath();
                                 ctx.shadowColor = ctx.fillStyle = '#' + (b.material.ambient || b.material.color).getHexString();
-                                ctx.arc(b.position.x + this.uni.wallSize.x / 2, -b.position.y + this.uni.wallSize.y / 2, b.geometry.radius * 1.025, 0, 2 * Math.PI);
+                                ctx.arc(b.position.x + this.size.x / 2, -b.position.y + this.size.y / 2, b.geometry.radius * 1.025, 0, 2 * Math.PI);
 
                                 ctx.fill();
                             }
@@ -150,9 +185,9 @@ var GP = GP || {};
                         {
                             ctx.shadowBlur = 50;
 
-                            for (var i = 0, b; i < this.uni.booms.length; i++) {
+                            for (var i = 0, b; i < booms.length; i++) {
 
-                                b = this.uni.booms[i];
+                                b = booms[i];
                                 b.update(time);
 
                                 if (!b.isDead) {
@@ -160,21 +195,19 @@ var GP = GP || {};
                                     ctx.globalAlpha = b.opacity;
                                     ctx.shadowColor = ctx.fillStyle = b.color;
                                     ctx.beginPath();
-                                    ctx.arc(b.ball.position.x + this.uni.wallSize.x / 2, -b.ball.position.y + this.uni.wallSize.y / 2, b.radius, 0, 2 * Math.PI);
+                                    ctx.arc(b.ball.position.x + this.size.x / 2, -b.ball.position.y + this.size.y / 2, b.radius, 0, 2 * Math.PI);
                                     ctx.fill();
                                 }
                             }
 
                         }
 
-                        if (this.mesh === null) this.reset();
-
                         this.mesh.material.map.needsUpdate = true;
                     }
 
                 };
 
-                this.wall = new Wall(this);
+                this.wall = new Wall(this.wallSize);
             }
 
             // balls
@@ -294,7 +327,6 @@ var GP = GP || {};
             this.renderer = (function initRenderer(scene) {
 
                 var renderer = new THREE.WebGLRenderer({
-                    antialias: config.antialias,
                     alpha: true
                 });
 
@@ -311,24 +343,66 @@ var GP = GP || {};
 
             this.onCanvasResize(this.canvas.clientWidth, this.canvas.clientHeight);
 
-        };
+        },
 
-        this.picker = new GP.Picker(this);
+        render: function () {
 
-        this.initEvents = function () {
+            var time = Date.now(),
+                w = this.canvas.clientWidth,
+                h = this.canvas.clientHeight;
 
-            // http://mwbrooks.github.io/thumbs.js/
-            this.container.addEventListener('touchstart', this.onClick.bind(this), false);
+            if (this.canvas.width != w || this.canvas.height != h) {
+                this.onCanvasResize(w, h);
+            }
 
-        };
+            this.renderer.render(this.scene, this.camera);
 
-        this.onClick = function (e) {
+            this.animate(time);
 
-            this.picker.pickAt(e.clientX, e.clientY);
+        },
 
-        };
+        animate: function (time) {
 
-        this.onCanvasResize = function (w, h) {
+            if (this.booms.length > 0) {
+
+                this.updateBooms(time);
+
+            }
+
+            this.wall.update(time, this.balls, this.booms);
+
+        },
+
+
+        boom: function (ball) {
+
+            //             console.log("Boom ", ball.name);
+
+            this.booms.push(new GP.Boom(ball));
+
+        },
+
+        updateBooms: function (time) {
+
+            for (var i = 0, b; i < this.booms.length; i++) {
+
+                b = this.booms[i];
+
+                if (b.isDead) {
+
+                    this.booms.splice(i, 1);
+                    i--;
+
+                } else {
+
+                    b.update(time);
+
+                }
+            }
+
+        },
+
+        onCanvasResize: function (w, h) {
 
             this.canvas.width = this.wallSize.x = w;
             this.canvas.height = this.wallSize.y = h;
@@ -350,121 +424,42 @@ var GP = GP || {};
 
             this.renderer.setSize(w, h);
 
-            this.wall.reset();
+            this.wall.reset(w, h, this.scene);
 
-            this.picker.reset();
+            this.picker.reset(w, h, this.camera);
 
-        }.bind(this);
+        },
 
+        initEvents: function () {
 
-        this.boom = function (ball) {
+            // http://mwbrooks.github.io/thumbs.js/
+            this.container.addEventListener('touchstart', this.onClick.bind(this), false);
 
-            //             console.log("Boom ", ball.name);
+        },
 
-            this.booms.push(new GP.Boom(ball));
+        onClick: function (e) {
 
-        };
-
-        this.updateBooms = function (time) {
-
-            for (var i = 0, b; i < this.booms.length; i++) {
-
-                b = this.booms[i];
-
-                if (b.isDead) {
-
-                    this.booms.splice(i, 1);
-                    i--;
-
-                } else {
-
-                    b.update(time);
-
-                }
+            if (!this._boom) {
+                this._boom = this.boom.bind(this);
             }
 
-        };
+            this.picker.pickAt(e.clientX, e.clientY, this.balls, this._boom);
 
-
-        this.animate = function (time, delta) {
-
-            if (this.booms.length > 0) {
-
-                this.updateBooms(time);
-
-            }
-            this.wall.update(time);
-
-        };
-
-
-        var lastTime = 0;
-
-        this.render = function (uni) {
-
-            var time = Date.now(),
-                w = uni.canvas.clientWidth,
-                h = uni.canvas.clientHeight;
-
-            if (uni.canvas.width != w || uni.canvas.height != h) {
-                uni.onCanvasResize(w, h);
-            }
-
-            uni.renderer.render(uni.scene, uni.camera);
-
-            uni.animate(time, time - lastTime);
-
-            lastTime = time;
-
-            requestAnimationFrame(function () {
-                uni.render(uni);
-            });
-
-        };
-
-
-        init.call(this, container);
-
-        return this;
-    };
-
-    GP.Universe.prototype = {
-        constructor: GP.Universe,
-
-        config: {},
-
-        container: null,
-        canvas: null,
-
-        camera: null,
-        cameraAnchor: null,
-
-        scene: null,
-        renderer: null,
-
-        floor: null,
-        lights: null,
-        wall: null,
-        booms: null,
-
-        render: null
+        }
     };
 
 
 
+    GP.Picker = function (w, h, camera) {
 
-    GP.Picker = function (uni) {
-
-        this.uni = uni;
-        this.reset();
+        this.reset(w, h, camera);
 
     }
 
     GP.Picker.prototype = {
         constructor: GP.Picker,
 
-        uni: null,
-        targets: null,
+        camera: null,
 
         width: null,
         height: null,
@@ -474,43 +469,43 @@ var GP = GP || {};
         projector: null,
         vector: null,
 
-        reset: function () {
+        reset: function (w, h, camera) {
 
-            this.width = this.uni.container.clientWidth;
-            this.height = this.uni.container.clientHeight;
-            this.widthHalf = this.uni.container.clientWidth / 2;
-            this.heightHalf = this.uni.container.clientHeight / 2;
+            this.width = w;
+            this.height = h;
 
             this.projector = new THREE.Projector();
             this.vector = new THREE.Vector3();
 
-            this.targets = this.uni.balls;
+            this.camera = camera;
 
         },
 
-        pickAt: function (x, y) {
+        pickAt: function (x, y, targets, callback) {
 
             this.vector.set((x / this.width) * 2 - 1, -(y / this.height) * 2 + 1, 0);
 
             var ray;
 
-            if (this.uni.camera.name == "o") {
+            if (this.camera.name == "o") {
 
-                ray = this.projector.pickingRay(this.vector, this.uni.camera);
+                ray = this.projector.pickingRay(this.vector, this.camera);
 
             } else {
 
-                this.projector.unprojectVector(this.vector, this.uni.camera);
+                this.projector.unprojectVector(this.vector, this.camera);
 
-                ray = new THREE.Raycaster(this.uni.camera.position, this.vector.sub(this.uni.camera.position).normalize());
+                ray = new THREE.Raycaster(this.camera.position, this.vector.sub(this.camera.position).normalize());
 
             }
 
-            var intersects = ray.intersectObjects(this.targets);
+            var intersects = ray.intersectObjects(targets);
 
             if (intersects.length > 0) {
 
-                this.uni.boom(intersects[0].object);
+                // console.log(intersects[0].object.name);
+
+                callback(intersects[0].object);
 
             }
         },
@@ -572,4 +567,12 @@ var GP = GP || {};
 })();
 
 var uni = new GP.Universe(document.getElementById('container'));
-uni.render(uni);
+
+function render() {
+
+    uni.render();
+
+    requestAnimationFrame(render);
+};
+
+render();
