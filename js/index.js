@@ -241,10 +241,12 @@ var GP = GP || {};
                     var m = new THREE.MeshBasicMaterial({
                             color: new THREE.Color(0x757575)
                         }),
-                        g = new THREE.SphereGeometry(6, segW, segH, 0, Math.PI);
+                        g;
 
 
-                    var createBall = function (pos, radius, g, m) {
+                    var createBall = function (pos, radius, m) {
+
+                        g = new THREE.SphereGeometry(radius, segW, segH, 0, Math.PI);
 
                         ball = new THREE.Mesh(g, m);
 
@@ -262,23 +264,23 @@ var GP = GP || {};
                     };
 
                     var max = GP.Boom.prototype.NOTES.length,
-                        cursor = new THREE.Vector3(-this.wallSize.x / 2 + 10, this.wallSize.y / 2 - 10, 0),
+                        cursor = new THREE.Vector3(-this.wallSize.x / 2 + 10, this.wallSize.y / 2 - 14, 0),
                         radius = 6,
                         ball;
 
                     for (var i = 0; i < max; i++) {
 
-                        ball = createBall(cursor.clone(), radius, g, m);
+                        ball = createBall(cursor.clone(), 3 + radius * ((i + 1) / max), m);
 
                         // cheat to get the frequency
                         ball.radiusUnit = (i + 1) / max;
 
-                        console.log(max, i, ball.radiusUnit);
+                        // console.log(max, i, ball.radiusUnit);
 
                         this.balls.push(ball);
                         this.scene.add(ball);
 
-                        cursor.x += radius + 10;
+                        cursor.x += radius + 10 + i * 2;
 
                     }
 
