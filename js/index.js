@@ -60,7 +60,7 @@ var GP = GP || {};
             // this.camera.position.set(0, 0, 100);
             // this.camera.name = "p";
 
-            this.camera = new THREE.OrthographicCamera(-w / 2, w / 2, h / 2, -h / 2, -200, 50);
+            this.camera = new THREE.OrthographicCamera(-w / 2, w / 2, h / 2, -h / 2, -500, 100);
             this.camera.name = "o";
 
             this.cameraAnchor = new THREE.Object3D();
@@ -236,6 +236,54 @@ var GP = GP || {};
                     radius, // temp radius
                     pos; // temp pos
 
+                // create sample balls
+                {
+                    var m = new THREE.MeshBasicMaterial({
+                            color: new THREE.Color(0x757575)
+                        }),
+                        g = new THREE.SphereGeometry(6, segW, segH, 0, Math.PI);
+
+
+                    var createBall = function (pos, radius, g, m) {
+
+                        ball = new THREE.Mesh(g, m);
+
+                        ball.radius = radius;
+
+                        ball.radiusUnit = (radius - radiusMin) / (radiusMax - radiusMin); // radius 0-1
+
+                        ball.position.set(pos.x, pos.y, pos.z);
+
+                        ball.name = "ball" + i + "#" + m.color.getHexString() + "@" + JSON.stringify(ball.position);
+
+                        // console.log("new: ball(%i, %i, %i) @%i:%i:%i O%i", radius, segW, segH, pos.x, pos.y, pos.z, ball.radiusUnit);
+
+                        return ball;
+                    };
+
+                    var max = GP.Boom.prototype.NOTES.length,
+                        cursor = new THREE.Vector3(-this.wallSize.x / 2 + 10, this.wallSize.y / 2 - 10, 0),
+                        radius = 6,
+                        ball;
+
+                    for (var i = 0; i < max; i++) {
+
+                        ball = createBall(cursor.clone(), radius, g, m);
+
+                        // cheat to get the frequency
+                        ball.radiusUnit = (i + 1) / max;
+
+                        console.log(max, i, ball.radiusUnit);
+
+                        this.balls.push(ball);
+                        this.scene.add(ball);
+
+                        cursor.x += radius + 10;
+
+                    }
+
+                }
+
                 var generateNewPosition = function (balls, radius) {
 
                     var pos = new THREE.Vector3(),
@@ -301,6 +349,7 @@ var GP = GP || {};
 
                         ball = new THREE.Mesh(g, m);
                         ball.radius = radius;
+                        ball.radiusUnit = (radius - radiusMin) / (radiusMax - radiusMin); // radius 0-1
                         // ball.rotateX(0.5 * Math.PI);
                         ball.position.set(pos.x, pos.y, pos.z);
 
@@ -309,7 +358,7 @@ var GP = GP || {};
                         this.balls.push(ball);
                         this.scene.add(ball);
 
-                        // console.log("new: ball(%i, %i, %i) @%i:%i:%i", radius, segW, segH, pos.x, pos.y, pos.z);
+                        // console.log("new: ball(%i, %i, %i) @%i:%i:%i O%i", radius, segW, segH, pos.x, pos.y, pos.z, ball.radiusUnit);
                     }
                 }
 
@@ -528,6 +577,9 @@ var GP = GP || {};
 
         this.color = '#' + (ball.material.ambient || ball.material.color).getHexString();
         this.opacity = 1;
+
+        this.initSound();
+
     };
 
     GP.Boom.prototype = {
@@ -544,6 +596,9 @@ var GP = GP || {};
         color: null,
         opacity: null,
 
+        audioCtx: new AudioContext(), // singleton
+        osc: null,
+
         isDead: false,
 
         update: function update(time) {
@@ -557,10 +612,51 @@ var GP = GP || {};
 
             this.opacity = 0.5 * (animFactor / 9.5);
 
+
             if (Date.now() > this.endTime) {
-                this.isDead = true;
+                this.kill();
             }
+        },
+
+
+        NOTES: [493.88, 440, 349.23, 329.63, 293.66, 261.63],
+
+        initSound: function () {
+
+            var audioCtx = this.audioCtx;
+
+            this.gain = audioCtx.createGain();
+
+            var attack = 10,
+                decay = 750;
+
+            this.gain.gain.value = 0.2;
+            this.gain.gain.setValueAtTime(0, audioCtx.currentTime);
+            this.gain.gain.linearRampToValueAtTime(1, audioCtx.currentTime + attack / 1000);
+            this.gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + decay / 1000);
+            this.gain.connect(audioCtx.destination);
+
+            this.osc = audioCtx.createOscillator();
+            this.osc.connect(this.gain);
+            this.osc.type = "sine";
+
+            this.osc.frequency.value = this.NOTES[~~(this.NOTES.length * this.ball.radiusUnit - 1)];
+
+            console.log(this.osc.frequency.value);
+
+            this.osc.start();
+
+        },
+
+        kill: function () {
+
+            if (!this.osc) return;
+            this.osc.stop();
+            this.osc = null;
+
+            this.isDead = true;
         }
+
     };
 
 
