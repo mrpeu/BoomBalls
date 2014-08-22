@@ -42,12 +42,37 @@
     a {
         color: #0080ff;
     }
+    
+    /* from: http://unindented.org/articles/github-ribbon-using-css-transforms/ */
+    .ribbon {
+        background-color: #202020;
+        overflow: hidden;
+        white-space: nowrap;
+        position: absolute;
+        right: -50px;
+        top: 40px;
+        transform: rotate(45deg);
+        box-shadow: 0 0 10px #888;
+    }
+    .ribbon a {
+        border: 1px solid #D1D1D1;
+        color: #fff;
+        display: block;
+        font: bold 81.25% 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        margin: 1px 0;
+        padding: 7px 50px;
+        text-align: center;
+        text-decoration: none;
+        text-shadow: 0 0 3px #ACACAC;
+    }
     </style>
 </head>
 
 <body>
     
-    <a href="https://github.com/mrpeu/BoomBalls"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://camo.githubusercontent.com/567c3a48d796e2fc06ea80409cc9dd82bf714434/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f6c6566745f6461726b626c75655f3132313632312e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_left_darkblue_121621.png"></a>
+    <div class="ribbon">
+      <a href="https://github.com/mrpeu/BoomBalls">Fork me on GitHub</a>
+    </div>
 
     <div id="container"></div>
 
